@@ -1,6 +1,15 @@
 #!/bin/bash
 set -ex
 
+########################## ENVIRONMENT ACTIVATION #############################
+# Activate the slime-evolve environment to ensure Ray workers use the correct Python
+eval "$(micromamba shell hook --shell bash)"
+micromamba activate slime-evolve
+
+# Verify correct environment
+echo "Using Python: $(which python)"
+echo "Python version: $(python --version)"
+
 ########################### CONFIGURATION SECTION #############################
 
 #### Important: replace SAVE_PATH with your path with enough space ####
