@@ -2,9 +2,9 @@
 set -ex
 
 ########################## ENVIRONMENT ACTIVATION #############################
-# Activate the slime-evolve environment to ensure Ray workers use the correct Python
+# Activate the slime environment (slime-evolve is broken due to cp -r copy)
 eval "$(micromamba shell hook --shell bash)"
-micromamba activate slime-evolve
+micromamba activate slime
 
 # Verify correct environment
 echo "Using Python: $(which python)"

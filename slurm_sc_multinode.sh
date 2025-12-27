@@ -16,7 +16,7 @@ set -ex
 
 ########################## ENVIRONMENT ACTIVATION #############################
 eval "$(micromamba shell hook --shell bash)"
-micromamba activate slime-evolve
+micromamba activate slime
 
 ########################## MULTI-NODE RAY SETUP #############################
 MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
