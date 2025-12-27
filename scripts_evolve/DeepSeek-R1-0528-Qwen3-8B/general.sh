@@ -202,12 +202,14 @@ echo "[disk] HF_DATASETS_CACHE=$HF_DATASETS_CACHE TMPDIR=$TMPDIR"
 
 
 # Build the runtime environment JSON with proper variable substitution
+# Include LD_LIBRARY_PATH to ensure Ray workers use system cuDNN (not conda's)
 RUNTIME_ENV_JSON="$(cat <<JSON
 {
   "env_vars": {
-    "PYTHONPATH": "/root/Megatron-LM/",
+    "PYTHONPATH": "/checkpoint/comem/rulin/rl_evolve:/checkpoint/comem/rulin/rl_evolve/openevolve_adapted:/checkpoint/comem/rulin/slime_env/Megatron-LM",
     "CUDA_DEVICE_MAX_CONNECTIONS": "1",
     "NCCL_NVLS_ENABLE": "${HAS_NVLINK}",
+    "LD_LIBRARY_PATH": "/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}",
     "HF_HOME": "${HF_HOME}",
     "HUGGINGFACE_HUB_CACHE": "${HUGGINGFACE_HUB_CACHE}",
     "TRANSFORMERS_CACHE": "${TRANSFORMERS_CACHE}",
