@@ -198,4 +198,5 @@ train_log.txt
 
 *@anthropic-ai*
 __pycache__/
+*.pyc__pycache__/
 *.pyc
