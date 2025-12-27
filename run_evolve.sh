@@ -64,6 +64,10 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 export LIBRARY_PATH=/usr/local/cuda/lib64/stubs:/usr/lib/x86_64-linux-gnu:$LIBRARY_PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 
+# Distributed timeout (can be overridden by SLURM script for larger datastores)
+export NCCL_TIMEOUT=${NCCL_TIMEOUT:-3600}        # Default 1 hour
+export GLOO_TIMEOUT=${GLOO_TIMEOUT:-3600000}     # Default 1 hour in ms
+
 POSTFIX_STR="_seed${SEED}${INITIAL_PROGRAM_POSTFIX}${NOTE}"
 
 if [ "$SMALL_MODEL_NAME" = "dpsk_prorl_v2_1.5b" ]; then

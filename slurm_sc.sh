@@ -20,7 +20,15 @@ declare -a DB_SIZES=(10000 20000 50000 100000 200000 500000 1000000 2000000)
 DB_SIZE=${DB_SIZES[$SLURM_ARRAY_TASK_ID]}
 JOB_ID="${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 
-echo "=== Job: $JOB_ID, DB Size: $DB_SIZE ==="
+# Scale timeout linearly with datastore size
+# Base: 1 hour, +30 min per 100k datastore size
+TIMEOUT_SEC=$((3600 + DB_SIZE / 100000 * 1800))
+TIMEOUT_MS=$((TIMEOUT_SEC * 1000))
+
+export NCCL_TIMEOUT=$TIMEOUT_SEC
+export GLOO_TIMEOUT=$TIMEOUT_MS
+
+echo "=== Job: $JOB_ID, DB Size: $DB_SIZE, Timeout: ${TIMEOUT_SEC}s ==="
 
 ########################## CREATE JOB-SPECIFIC CONFIG #############################
 TASK="circle_packing_modular"
