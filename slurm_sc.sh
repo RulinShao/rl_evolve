@@ -16,14 +16,17 @@
 set -ex
 
 ########################## ENVIRONMENT ACTIVATION #############################
+# Set library paths BEFORE activating environment to ensure system libs take precedence
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
+export LIBRARY_PATH=/usr/local/cuda/lib64/stubs:/usr/lib/x86_64-linux-gnu:${LIBRARY_PATH}
+unset LD_PRELOAD
+
 # Activate the slime-evolve environment
 eval "$(micromamba shell hook --shell bash)"
 micromamba activate slime-evolve
 
-# Fix cuDNN library path - use system cuDNN instead of conda's
-# This is needed because SLURM jobs don't inherit interactive shell paths
+# Re-export to ensure they're not overwritten by conda activation
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
-unset LD_PRELOAD
 
 echo "Activated environment: $CONDA_DEFAULT_ENV"
 echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
