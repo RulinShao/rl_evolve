@@ -51,7 +51,11 @@ With ThetaEvolve, an 8B model can outperform AlphaEvolve on open optimization pr
 
 ## Setup
 
-Our RL environment follows the same setup as [slime](https://github.com/THUDM/slime) and [OpenEvolve](https://github.com/codelion/openevolve). We use Docker (run in ThetaEvolve folder):
+Our RL environment follows the same setup as [slime](https://github.com/THUDM/slime) and [OpenEvolve](https://github.com/codelion/openevolve).
+
+### Option 1: Docker
+
+Run in ThetaEvolve folder:
 
 ```bash
 # fixed image, haven't checked on the latest image
@@ -66,7 +70,34 @@ docker run --rm --name slime-evolve \
   -it slimerl/slime:v0.5.0rc0-cu126 /bin/bash
 ```
 
-After entering the docker, run the installation commands:
+### Option 2: Apptainer (for HPC clusters)
+
+If your cluster uses Apptainer (formerly Singularity) instead of Docker:
+
+```bash
+# Set cache directory to avoid home quota issues
+export APPTAINER_CACHEDIR=/gpfs/scrubbed/rulins/cache/apptainer
+mkdir -p $APPTAINER_CACHEDIR
+
+# Pull and convert Docker image to SIF format (one-time setup)
+cd /gpfs/scrubbed/rulins
+apptainer pull slime_v0.5.0rc0-cu126.sif docker://slimerl/slime:v0.5.0rc0-cu126
+
+# Start an interactive shell with GPU support
+apptainer shell --nv \
+  --bind /gpfs/projects/kohlab/rulins/ThetaEvolve:/workspace \
+  --pwd /workspace \
+  /gpfs/scrubbed/rulins/slime_v0.5.0rc0-cu126.sif
+```
+
+Key option mappings from Docker to Apptainer:
+- `--gpus all` → `--nv` (enables NVIDIA GPU support)
+- `-v source:dest` → `--bind source:dest`
+- `-w /workspace` → `--pwd /workspace`
+
+### Installation (inside container)
+
+After entering the container (Docker or Apptainer), run:
 
 ```bash
 cd /workspace
@@ -86,7 +117,7 @@ To run the experiments, you could change the parameters in `run.sh`, and then di
 Fist, remember to set the save_path to store ckpts:
 
 ```
-export SAVE_PATH=/path/to/disk/save
+export SAVE_PATH=/gpfs/scrubbed/rulins/save
 ```
 
 Then for example, if you want to run prorl-v2-1.5B, circle packing, RL training, original score as reward, you could set:
@@ -117,8 +148,8 @@ LAZY_OUTPUT_PENALTY=1
 Finally set the wandb configurations:
 ```bash
 WANDB_API_KEY=aaa
-WANDB_ENTITY=bbb
-WANDB_PROJECT=ccc
+WANDB_ENTITY=your-username-or-team   # e.g., "johndoe" or "my-research-lab"
+WANDB_PROJECT=theta-evolve-experiments      # e.g., "theta-evolve-experiments"
 ```
 
 

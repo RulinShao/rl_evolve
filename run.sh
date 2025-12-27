@@ -4,7 +4,7 @@
 ########################### CONFIGURATION SECTION - EDIT THESE VARIABLES #############################
 
 #### Important: replace SAVE_PATH with your path with enough space ####
-export SAVE_PATH=/path/to/disk
+export SAVE_PATH=/gpfs/scrubbed/rulins/save
 
 #### Model selection ####
 SMALL_MODEL_NAME="dpsk_prorl_v2_1.5b"
@@ -44,9 +44,9 @@ INITIAL_PROGRAM_POSTFIX=""
 NOTE=""
 
 #### Replace with your own wandb settings ####
-WANDB_API_KEY=aaa
-WANDB_ENTITY=bbb
-WANDB_PROJECT=ccc
+WANDB_API_KEY=412bcc10b2150ae3dd49eb6963df7390e605efd0                    # Get from https://wandb.ai/settings
+WANDB_ENTITY=Srl0310            # e.g., "johndoe" or "my-research-lab"
+WANDB_PROJECT=theta-evolve        # Your project name
 
 # ########################## END CONFIGURATION SECTION #############################
 
@@ -126,17 +126,14 @@ else
         echo "Incomplete model directory found at $SAVE_SHM_DIR/$MODEL_NAME, deleting and re-downloading"
         rm -rf "$SAVE_SHM_DIR/$MODEL_NAME"
     fi
-    echo "Downloading model $MODEL_NAME to current directory first..."
-    hf download $MODEL_FAMILY/$MODEL_NAME --local-dir ./$MODEL_NAME
-
+    
     # Create target directory if it doesn't exist
     mkdir -p $SAVE_SHM_DIR
 
-    # Move the downloaded model to target location
-    echo "copy model from ./$MODEL_NAME to $SAVE_SHM_DIR/$MODEL_NAME"
-    cp -r $MODEL_NAME $SAVE_SHM_DIR/
+    echo "Downloading model $MODEL_NAME directly to $SAVE_SHM_DIR/$MODEL_NAME..."
+    hf download $MODEL_FAMILY/$MODEL_NAME --local-dir $SAVE_SHM_DIR/$MODEL_NAME
 
-    echo "Model download and move completed"
+    echo "Model download completed"
 fi
 
 source scripts/models/${models_file_name}
