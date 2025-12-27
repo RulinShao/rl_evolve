@@ -15,6 +15,15 @@
 
 set -ex
 
+########################## ENVIRONMENT ACTIVATION #############################
+# Activate the slime-evolve environment
+eval "$(micromamba shell hook --shell bash)"
+micromamba activate slime-evolve
+
+echo "Activated environment: $CONDA_DEFAULT_ENV"
+which python
+python --version
+
 ########################### CONFIGURATION SECTION #############################
 
 #### Important: replace SAVE_PATH with your path with enough space ####
