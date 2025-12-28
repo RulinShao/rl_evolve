@@ -209,7 +209,7 @@ RUNTIME_ENV_JSON="$(cat <<JSON
     "PYTHONPATH": "/checkpoint/comem/rulin/rl_evolve:/checkpoint/comem/rulin/rl_evolve/openevolve_adapted:/checkpoint/comem/rulin/slime_env/Megatron-LM",
     "CUDA_DEVICE_MAX_CONNECTIONS": "1",
     "NCCL_NVLS_ENABLE": "${HAS_NVLINK}",
-    "LD_LIBRARY_PATH": "/usr/local/cuda/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}",
+    "LD_LIBRARY_PATH": "/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64",
     "HF_HOME": "${HF_HOME}",
     "HUGGINGFACE_HUB_CACHE": "${HUGGINGFACE_HUB_CACHE}",
     "TRANSFORMERS_CACHE": "${TRANSFORMERS_CACHE}",
