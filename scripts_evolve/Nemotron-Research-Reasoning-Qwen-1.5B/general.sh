@@ -173,11 +173,12 @@ MISC_ARGS=(
   --accumulate-allreduce-grads-in-fp32
   --attention-softmax-in-fp32
   --attention-backend flash
+  --use-slime-router \
 )
 
 # Start Ray (training/inference separation: don't use --colocate; use train_async.py)
 export MASTER_ADDR=${MASTER_ADDR:-"127.0.0.1"}
-ray start --head --node-ip-address ${MASTER_ADDR} --num-gpus 2 --disable-usage-stats --dashboard-host=0.0.0.0 --dashboard-port=8265
+ray start --head --node-ip-address ${MASTER_ADDR} --num-gpus 8 --disable-usage-stats --dashboard-host=0.0.0.0 --dashboard-port=8265
 
 
 # Disable Triton
@@ -196,12 +197,14 @@ echo "[disk] HF_DATASETS_CACHE=$HF_DATASETS_CACHE TMPDIR=$TMPDIR"
 
 
 # Build the runtime environment JSON with proper variable substitution
+# Include LD_LIBRARY_PATH to ensure Ray workers use system cuDNN (not conda's)
 RUNTIME_ENV_JSON="$(cat <<JSON
 {
   "env_vars": {
-    "PYTHONPATH": "/root/Megatron-LM/",
+    "PYTHONPATH": "/checkpoint/comem/rulin/rl_evolve:/checkpoint/comem/rulin/rl_evolve/openevolve_adapted:/checkpoint/comem/rulin/slime_env/Megatron-LM",
     "CUDA_DEVICE_MAX_CONNECTIONS": "1",
     "NCCL_NVLS_ENABLE": "${HAS_NVLINK}",
+    "LD_LIBRARY_PATH": "/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64",
     "HF_HOME": "${HF_HOME}",
     "HUGGINGFACE_HUB_CACHE": "${HUGGINGFACE_HUB_CACHE}",
     "TRANSFORMERS_CACHE": "${TRANSFORMERS_CACHE}",
@@ -225,8 +228,8 @@ ray job submit --address="http://127.0.0.1:8265" \
   --runtime-env-json="${RUNTIME_ENV_JSON}" \
   -- python3 train.py \
   --actor-num-nodes 1 \
-  --actor-num-gpus-per-node 1 \
-  --rollout-num-gpus 1 \
+  --actor-num-gpus-per-node 4 \
+  --rollout-num-gpus 4 \
   ${MODEL_ARGS[@]} \
   ${CKPT_ARGS[@]} \
   ${ROLLOUT_ARGS[@]} \
