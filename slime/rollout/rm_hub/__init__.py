@@ -13,6 +13,7 @@ from .math_utils import extract_answer as extract_boxed_answer
 from .math_utils import grade_answer_verl
 
 from .evolving_gym_rm import evolving_gym_rm
+from .arc_agi3_rm import arc_agi3_rm
 import json
 
 async def remote_rm(args, sample: Sample):
@@ -42,9 +43,11 @@ async def async_rm(args, sample: Sample, **kwargs):
 
     # This function is intended for remote or time-consuming reward model evaluation.
     # Implement the actual logic as needed.
-    if rm_type in ["evolving-gym"]:
+    if rm_type in ["evolving-gym", "arc-agi3"]:
         if rm_type == "evolving-gym":
             return await evolving_gym_rm(args=args, sample=sample)
+        elif rm_type == "arc-agi3":
+            return await arc_agi3_rm(args=args, sample=sample)
 
     
     # assert False, "don't suppport other rm_type now"

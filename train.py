@@ -64,10 +64,10 @@ def train(args):
                 critic_model.save_model(rollout_id)
             if args.rollout_global_dataset:
                 ray.get(rollout_manager.save.remote(rollout_id))
-            elif args.evolving_gym:
+            elif getattr(args, "evolving_gym", False) or getattr(args, "arc_agi3_gym", False):
                 ray.get(rollout_manager.save.remote(rollout_id))
             else :
-                assert False, "None of args.rollout_global_dataset, args.evolving_gym is set."
+                assert False, "None of args.rollout_global_dataset, args.evolving_gym, args.arc_agi3_gym is set."
 
         if args.offload:
             if args.use_critic:

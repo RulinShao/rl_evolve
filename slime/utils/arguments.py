@@ -1023,6 +1023,56 @@ def get_slime_extra_args_provider(add_custom_arguments=None):
                 )
             )
 
+            # === ARC-AGI-3 Gym Arguments ===
+            parser.add_argument(
+                "--arc-agi3-gym",
+                action="store_true",
+                default=False,
+                help="Use ARC-AGI-3 game environment for RL training (mutually exclusive with global dataset and evolving-gym).",
+            )
+            parser.add_argument(
+                "--arc-agi3-game-id",
+                type=str,
+                default="ls20",
+                help="ARC-AGI-3 game identifier or prefix (e.g., 'ls20'). Will be resolved to full ID automatically.",
+            )
+            parser.add_argument(
+                "--arc-agi3-api-key",
+                type=str,
+                default=None,
+                help="ARC-AGI-3 API key. If not provided, uses ARC_API_KEY environment variable.",
+            )
+            parser.add_argument(
+                "--arc-agi3-api-url",
+                type=str,
+                default="https://three.arcprize.org",
+                help="ARC-AGI-3 API base URL. Default: https://three.arcprize.org",
+            )
+            parser.add_argument(
+                "--arc-agi3-num-parallel-episodes",
+                type=int,
+                default=8,
+                help="Number of parallel game episodes to run. Default: 8.",
+            )
+            parser.add_argument(
+                "--arc-agi3-max-actions",
+                type=int,
+                default=80,
+                help="Maximum actions per episode before forced reset. Default: 80.",
+            )
+            parser.add_argument(
+                "--arc-agi3-max-plays",
+                type=int,
+                default=10,
+                help="Maximum replays of same game before creating new episode. Default: 10.",
+            )
+            parser.add_argument(
+                "--arc-agi3-history-window",
+                type=int,
+                default=5,
+                help="Number of recent frames to include in prompt. Default: 5.",
+            )
+
             return parser
 
         # Add custom arguments in front to prevent overwritten some slime arguments.

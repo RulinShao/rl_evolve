@@ -16,6 +16,10 @@ from slime.utils.types import Sample
 # === openevolve_adapted Evolving Gym ===
 from openevolve.evolving_gym import SingleTaskEvolvingGym
 from slime.rollout.rm_hub.evolving_gym_rm import set_gym as _set_evolving_gym_to_rm
+
+# === ARC-AGI-3 Gym ===
+from openevolve.evolving_gym.arc_agi3_gym import ArcAgi3Gym
+from slime.rollout.rm_hub.arc_agi3_rm import set_gym as _set_arc_agi3_gym_to_rm
         
 
 class EvolvingGymManager:
@@ -111,6 +115,77 @@ class EvolvingGymManager:
         )
 
 
+class ArcAgi3GymManager:
+    """
+    Wrapper for ARC-AGI-3 game environment.
+    - Manages gym initialization and sample generation
+    - Formats prompts using tokenizer.apply_chat_template
+    """
+
+    def __init__(self, args, tokenizer):
+        self.args = args
+        self.tokenizer = tokenizer
+
+        self.gym = ArcAgi3Gym(
+            game_id=getattr(args, "arc_agi3_game_id", "ls20"),
+            api_key=getattr(args, "arc_agi3_api_key", None),
+            api_url=getattr(args, "arc_agi3_api_url", "https://three.arcprize.org"),
+            num_parallel_episodes=getattr(args, "arc_agi3_num_parallel_episodes", 8),
+            max_actions_per_episode=getattr(args, "arc_agi3_max_actions", 80),
+            max_plays_per_episode=getattr(args, "arc_agi3_max_plays", 10),
+            history_window=getattr(args, "arc_agi3_history_window", 5),
+            seed=getattr(args, "rollout_seed", None),
+        )
+
+        # Defer initialization to load() method
+        print(f"[ArcAgi3Gym] Created gym for game {args.arc_agi3_game_id}, deferring initialization")
+
+        # Register gym with RM
+        _set_arc_agi3_gym_to_rm(self.gym)
+
+    def get_sample(self) -> Optional[Sample]:
+        """
+        Get a task from gym and format as prompt string.
+        """
+        # Auto-initialize if not already done
+        if not self.gym._initialized:
+            print(f"[ArcAgi3GymManager] Auto-initializing gym (was not initialized by load())...")
+            self.gym.initialize_sync()
+            print(f"[ArcAgi3GymManager] Gym initialized with {len(self.gym.episodes)} episodes")
+        
+        prompt_dict, metadata = self.gym.problem_generator()
+        system_txt = prompt_dict.get("system", "")
+        user_txt = prompt_dict.get("user", "")
+
+        apply_chat_template = self.args.apply_chat_template
+        tokenizer = self.tokenizer
+
+        if apply_chat_template:
+            messages = []
+            if system_txt:
+                messages.append({"role": "system", "content": system_txt})
+            if user_txt:
+                messages.append({"role": "user", "content": user_txt})
+            else:
+                # User message required
+                messages.append({"role": "user", "content": "Choose your next action."})
+
+            prompt_str = tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+        else:
+            prompt_str = (system_txt + "\n\n" + user_txt).strip()
+
+        # Mark sample as ARC-AGI-3 for RM
+        metadata["arc_agi3"] = True
+
+        return Sample(
+            prompt=prompt_str,
+            label=None,
+            metadata=metadata,
+        )
+
+
 def _find_latest_database_checkpoint(load_dir: str) -> Optional[int]:
     """Find the latest database checkpoint rollout_id from save directory."""
     rollout_dir = os.path.join(load_dir, "rollout")
@@ -143,13 +218,15 @@ class RolloutDataSource:
         flags = [
             bool(args.rollout_global_dataset),
             bool(getattr(args, "evolving_gym", False)),
+            bool(getattr(args, "arc_agi3_gym", False)),
         ]
         assert sum(flags) == 1, (
-            "Exactly one of --rollout-global-dataset, --evolving-gym "
+            "Exactly one of --rollout-global-dataset, --evolving-gym, --arc-agi3-gym "
             "must be selected."
         )
         
         self.evolving_gym_manager = None
+        self.arc_agi3_manager = None
 
         if args.rollout_global_dataset:
             tokenizer = AutoTokenizer.from_pretrained(args.hf_checkpoint, trust_remote_code=True)
@@ -175,6 +252,11 @@ class RolloutDataSource:
             self.dataset = None
             tokenizer = AutoTokenizer.from_pretrained(args.hf_checkpoint, trust_remote_code=True)
             self.evolving_gym_manager = EvolvingGymManager(args, tokenizer)
+
+        elif getattr(args, "arc_agi3_gym", False):
+            self.dataset = None
+            tokenizer = AutoTokenizer.from_pretrained(args.hf_checkpoint, trust_remote_code=True)
+            self.arc_agi3_manager = ArcAgi3GymManager(args, tokenizer)
 
         else:
             assert False, "No valid data source."
@@ -217,6 +299,19 @@ class RolloutDataSource:
                     group.append(sample)
                 samples.append(group)
             assert len(samples) == num_samples
+        elif self.arc_agi3_manager is not None:
+            while len(samples) < num_samples:
+                prompt_sample = self.arc_agi3_manager.get_sample()
+                if prompt_sample is None:
+                    continue
+                group = []
+                for _ in range(self.args.n_samples_per_prompt):
+                    sample = copy.deepcopy(prompt_sample)
+                    sample.index = self.sample_index
+                    self.sample_index += 1
+                    group.append(sample)
+                samples.append(group)
+            assert len(samples) == num_samples
         else:
             assert False, "There is no valid data source."
             for _ in range(num_samples):
@@ -240,10 +335,21 @@ class RolloutDataSource:
                 database_path = os.path.join(self.args.save, f"rollout/evolving_gym_database_{rollout_id}")
                 os.makedirs(os.path.dirname(database_path), exist_ok=True)
                 self.evolving_gym_manager.gym.database.save(database_path, rollout_id)
+            elif getattr(self.args, "arc_agi3_gym", False):
+                # Save ARC-AGI-3 gym stats (episodes are API-managed, just save local state)
+                import json
+                stats_path = os.path.join(self.args.save, f"rollout/arc_agi3_stats_{rollout_id}.json")
+                os.makedirs(os.path.dirname(stats_path), exist_ok=True)
+                stats = self.arc_agi3_manager.gym.get_stats()
+                stats["rollout_id"] = rollout_id
+                with open(stats_path, "w") as f:
+                    json.dump(stats, f, indent=2)
+                print(f"[SAVE] Saved ARC-AGI-3 stats to {stats_path}")
             else:
-                assert False, "None of args.rollout_global_dataset or args.evolving_gym is set."
+                assert False, "None of args.rollout_global_dataset, args.evolving_gym, or args.arc_agi3_gym is set."
         else :
             assert not self.args.evolving_gym, "If args.rollout_global_dataset is set, args.evolving_gym must not be set."
+            assert not getattr(self.args, "arc_agi3_gym", False), "If args.rollout_global_dataset is set, args.arc_agi3_gym must not be set."
 
         state_dict = {
             "sample_offset": self.sample_offset,
@@ -284,8 +390,14 @@ class RolloutDataSource:
                         initial_prog = list(self.evolving_gym_manager.gym.database.programs.values())[0]
                         print(f"[LOAD] Initial program metrics: {initial_prog.metrics}")
                     return None
+            elif getattr(self.args, "arc_agi3_gym", False):
+                # ARC-AGI-3 gym: always initialize fresh (episodes are API-managed)
+                print(f"[LOAD] ARC-AGI-3 gym: initializing episodes...")
+                self.arc_agi3_manager.gym.initialize_sync()
+                print(f"[LOAD] ARC-AGI-3 gym initialized with {len(self.arc_agi3_manager.gym.episodes)} episodes")
+                return None
             else:
-                print(f"[LOAD] evolving_gym=False, returning None")
+                print(f"[LOAD] evolving_gym=False, arc_agi3_gym=False, returning None")
                 return None
 
         # If still rollout_id == -1, return None
@@ -308,11 +420,18 @@ class RolloutDataSource:
                 else:
                     # assert False, f"Evolving gym database {database_path} does not exist."
                     print(f"[LOAD] Warning: Evolving gym database {database_path} does not exist, using empty database")
+            elif getattr(self.args, "arc_agi3_gym", False):
+                # ARC-AGI-3 gym: initialize if not already done
+                if not self.arc_agi3_manager.gym._initialized:
+                    print(f"[LOAD] ARC-AGI-3 gym: initializing episodes...")
+                    self.arc_agi3_manager.gym.initialize_sync()
+                print(f"[LOAD] ARC-AGI-3 gym has {len(self.arc_agi3_manager.gym.episodes)} active episodes")
             else:
-                assert False, "None of args.rollout_global_dataset or args.evolving_gym is set."
+                assert False, "None of args.rollout_global_dataset, args.evolving_gym, or args.arc_agi3_gym is set."
             # return
         else :
             assert not self.args.evolving_gym, "If args.rollout_global_dataset is set, args.evolving_gym must not be set."
+            assert not getattr(self.args, "arc_agi3_gym", False), "If args.rollout_global_dataset is set, args.arc_agi3_gym must not be set."
 
         # Load RolloutDataSource base state
         path = os.path.join(self.args.load, f"rollout/global_dataset_state_dict_{rollout_id}.pt")

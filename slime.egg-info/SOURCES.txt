@@ -56,6 +56,7 @@ slime/rollout/slime_router_generate.py
 slime/rollout/filter_hub/__init__.py
 slime/rollout/filter_hub/dynamic_sampling_filters.py
 slime/rollout/rm_hub/__init__.py
+slime/rollout/rm_hub/arc_agi3_rm.py
 slime/rollout/rm_hub/deepscaler.py
 slime/rollout/rm_hub/evolving_gym_rm.py
 slime/rollout/rm_hub/f1.py
